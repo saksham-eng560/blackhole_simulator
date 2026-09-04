@@ -66,6 +66,7 @@ The application gracefully handles non-TTY environments (piped output, backgroun
 |-----|--------|
 | `←` `→` | Rotate camera azimuth (φ) |
 | `↑` `↓` | Rotate camera elevation (θ) |
+| `[` / `]` | Tilt camera (roll around z-axis) |
 | `+` / `-` | Zoom in / out |
 | `m` / `M` | Decrease / increase black hole mass |
 | `f` / `F` | Narrow / widen field of view |

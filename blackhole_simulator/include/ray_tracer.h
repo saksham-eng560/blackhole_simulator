@@ -4,6 +4,7 @@
 #include "vec3.h"
 #include "black_hole.h"
 #include "accretion_disk.h"
+#include <utility>
 
 enum class HitType {
     NONE,             
@@ -45,5 +46,5 @@ private:
     double adaptiveStepSize(double r) const;
 
 
-    double starfield(const Vec3& direction) const;
+    std::pair<double, double> starfield(const Vec3& direction) const;
 };

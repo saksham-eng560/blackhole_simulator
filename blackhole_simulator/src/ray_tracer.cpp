@@ -70,27 +70,119 @@ double RayTracer::adaptiveStepSize(double r) const {
     return step_size * 500.0;                        
 }
 
-double RayTracer::starfield(const Vec3& direction) const {
+std::pair<double, double> RayTracer::starfield(const Vec3& direction) const {
     Vec3 d = direction.normalized();
 
+    auto hash = [](int x, int y, int z) -> double {
+        uint32_t h = static_cast<uint32_t>(x * 73856093u ^ y * 19349663u ^ z * 83492791u);
+        h = (h ^ (h >> 13)) * 0x5bd1e995;
+        h = h ^ (h >> 15);
+        return static_cast<double>(h & 0xFFFF) / 65535.0;
+    };
 
-    int ix = static_cast<int>(std::floor(d.x * 60.0));
-    int iy = static_cast<int>(std::floor(d.y * 60.0));
-    int iz = static_cast<int>(std::floor(d.z * 60.0));
+    // 1. Small Galaxy Swirls (spiral galaxies rendered using '*' and '.')
+    struct GalaxySwirl {
+        Vec3 center;
+        Vec3 u, v;
+        double radius;
+    };
+    static const auto init_galaxy = [](Vec3 c, double rad) -> GalaxySwirl {
+        c = c.normalized();
+        Vec3 up = (std::abs(c.y) < 0.9) ? Vec3(0, 1, 0) : Vec3(1, 0, 0);
+        Vec3 u = up.cross(c).normalized();
+        Vec3 v = c.cross(u).normalized();
+        return { c, u, v, rad };
+    };
+    static const GalaxySwirl galaxies[3] = {
+        init_galaxy(Vec3(-0.5,  0.6, -0.6), 0.24),
+        init_galaxy(Vec3( 0.7, -0.4,  0.6), 0.26),
+        init_galaxy(Vec3(-0.6, -0.5,  0.6), 0.22)
+    };
 
+    for (const auto& g : galaxies) {
+        double dot = d.dot(g.center);
+        double cos_r = std::cos(g.radius);
+        if (dot > cos_r) {
+            double lx = d.dot(g.u);
+            double ly = d.dot(g.v);
+            double r = std::sqrt(lx * lx + ly * ly) / g.radius;
+            if (r <= 1.0) {
+                double theta = std::atan2(ly, lx);
+                
+                // Galactic core
+                if (r < 0.08) {
+                    return { 0.95, 0.85 }; // hue=0.85 -> '*'
+                }
 
-    uint32_t h = static_cast<uint32_t>(ix * 73856093u ^ iy * 19349663u ^ iz * 83492791u);
-    h = (h ^ (h >> 13)) * 0x5bd1e995;
-    h = h ^ (h >> 15);
+                // Two-arm spiral: theta - winding * r
+                double arm_phase = theta - 7.0 * r;
+                double arm_dist = std::abs(std::sin(arm_phase));
+                double arm_width = 0.28 * (1.0 - 0.4 * r);
 
-    double val = static_cast<double>(h & 0xFFFF) / 65535.0;
+                if (arm_dist < arm_width) {
+                    int gx = static_cast<int>(std::floor(d.x * 120.0));
+                    int gy = static_cast<int>(std::floor(d.y * 120.0));
+                    int gz = static_cast<int>(std::floor(d.z * 120.0));
+                    double ghash = hash(gx, gy, gz);
 
-
-    if (val > 0.92) {
-
-        return 0.4 + 0.6 * ((val - 0.92) / 0.08);
+                    if (arm_dist < arm_width * 0.45 && ghash > 0.42) {
+                        return { 0.8 + 0.2 * (1.0 - r), 0.85 }; // hue=0.85 -> '*'
+                    } else if (ghash > 0.58) {
+                        return { 0.5 + 0.3 * (1.0 - r), 0.2 };  // hue=0.2  -> '.'
+                    }
+                }
+            }
+        }
     }
-    return 0.0;
+
+    // 2. Star Clusters: concentrated groups of '*' characters
+    struct Cluster {
+        Vec3 center;
+        double radius;
+    };
+    static const Cluster clusters[4] = {
+        { Vec3( 0.6,  0.7,  0.3).normalized(), 0.18 },
+        { Vec3(-0.7,  0.5, -0.5).normalized(), 0.16 },
+        { Vec3( 0.3, -0.8,  0.5).normalized(), 0.20 },
+        { Vec3(-0.5, -0.4,  0.7).normalized(), 0.15 }
+    };
+
+    for (const auto& c : clusters) {
+        double dot = d.dot(c.center);
+        double cos_r = std::cos(c.radius);
+        if (dot > cos_r) {
+            double dist = std::acos(std::clamp(dot, -1.0, 1.0)) / c.radius;
+            int cx = static_cast<int>(std::floor(d.x * 75.0));
+            int cy = static_cast<int>(std::floor(d.y * 75.0));
+            int cz = static_cast<int>(std::floor(d.z * 75.0));
+            double chash = hash(cx, cy, cz);
+            
+            double threshold = 0.72 + 0.22 * dist;
+            if (chash > threshold) {
+                return { 0.7 + 0.3 * (1.0 - dist), 0.6 }; // hue=0.6 -> '*'
+            }
+        }
+    }
+
+    // 3. Random location stars ('*' scattered on random locations)
+    int ix2 = static_cast<int>(std::floor((d.x + 12.34) * 85.0));
+    int iy2 = static_cast<int>(std::floor((d.y + 56.78) * 85.0));
+    int iz2 = static_cast<int>(std::floor((d.z + 90.12) * 85.0));
+    double val2 = hash(ix2, iy2, iz2);
+    if (val2 > 0.987) {
+        return { 0.6 + 0.4 * ((val2 - 0.987) / 0.013), 0.5 }; // hue=0.5 -> '*'
+    }
+
+    // 4. Distinct single-dot stars ('.' at distinct locations)
+    int ix1 = static_cast<int>(std::floor(d.x * 130.0));
+    int iy1 = static_cast<int>(std::floor(d.y * 130.0));
+    int iz1 = static_cast<int>(std::floor(d.z * 130.0));
+    double val1 = hash(ix1, iy1, iz1);
+    if (val1 > 0.988) {
+        return { 0.4 + 0.4 * ((val1 - 0.988) / 0.012), 0.1 }; // hue=0.1 -> '.'
+    }
+
+    return { 0.0, 0.0 };
 }
 
 TraceResult RayTracer::trace(const Vec3& origin, const Vec3& direction) const {
@@ -105,10 +197,11 @@ TraceResult RayTracer::trace(const Vec3& origin, const Vec3& direction) const {
 
         if (r > escape_radius && pos.dot(vel) > 0.0) {
             if (enable_stars) {
-                double brightness = starfield(vel);
-                if (brightness > 0.0) {
+                auto star = starfield(vel);
+                if (star.first > 0.0) {
                     result.hit       = HitType::BACKGROUND_STAR;
-                    result.intensity = brightness * 1.2;  
+                    result.intensity = star.first * 1.2;  
+                    result.hue       = star.second;
                     return result;
                 }
             }

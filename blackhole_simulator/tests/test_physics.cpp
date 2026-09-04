@@ -132,12 +132,12 @@ void test_disk_temperature_profile() {
     BlackHole bh(1.0);
     AccretionDisk disk(bh, 10.0);
     // At the inner edge, temperature should be 0
-    ASSERT_NEAR(disk.temperature(disk.inner_radius), 0.0, 1e-10, "T(r_isco) != 0");
+    ASSERT_NEAR(disk.temperature(Vec3{disk.inner_radius, 0.0, 0.0}), 0.0, 1e-10, "T(r_isco) != 0");
     // Temperature should peak somewhere between 1.2-1.5 × r_isco
     double T_peak = 0;
     double r_peak = 0;
     for (double r = disk.inner_radius + 0.1; r < disk.outer_radius; r += 0.1) {
-        double T = disk.temperature(r);
+        double T = disk.temperature(Vec3{r, 0.0, 0.0});
         if (T > T_peak) { T_peak = T; r_peak = r; }
     }
     double peak_ratio = r_peak / disk.inner_radius;

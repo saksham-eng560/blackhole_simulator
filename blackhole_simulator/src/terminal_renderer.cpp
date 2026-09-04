@@ -80,19 +80,22 @@ void TerminalRenderer::updateSize() {
     }
     intensity_buf.assign(width * height, 0.0);
     hue_buf.assign(width * height, 0.0);
+    hit_buf.assign(width * height, HitType::NONE);
 }
 
-void TerminalRenderer::setPixel(int x, int y, double intensity, double hue) {
+void TerminalRenderer::setPixel(int x, int y, double intensity, double hue, HitType hit) {
     if (x >= 0 && x < width && y >= 0 && y < height) {
         int idx = y * width + x;
         intensity_buf[idx] = intensity;
         hue_buf[idx]       = hue;
+        hit_buf[idx]       = hit;
     }
 }
 
 void TerminalRenderer::clear() {
     std::fill(intensity_buf.begin(), intensity_buf.end(), 0.0);
     std::fill(hue_buf.begin(), hue_buf.end(), 0.0);
+    std::fill(hit_buf.begin(), hit_buf.end(), HitType::NONE);
 }
 
 void TerminalRenderer::setHUD(const std::string& line1, const std::string& line2) {
@@ -190,22 +193,34 @@ void TerminalRenderer::heatmapRGB(double hue, double brightness,
     b = std::clamp(static_cast<int>(255.0 * bl * br), 0, 255);
 }
 
-std::string TerminalRenderer::coloredChar(double intensity, double hue) const {
-    char ch = intensityToChar(intensity);
+std::string TerminalRenderer::coloredChar(double intensity, double hue, HitType hit) const {
+    if (hit == HitType::BACKGROUND_STAR) {
+        char ch = (hue >= 0.4) ? '*' : '.';
 
-    if (color_mode == ColorMode::ASCII_ONLY) {
-        return std::string(1, ch);
-    }
+        if (color_mode == ColorMode::ASCII_ONLY) {
+            return std::string(1, ch);
+        }
 
+        int grey = static_cast<int>(255.0 * intensity);  
+        int r, g, b;
 
-    if (hue < -0.5) {
-        ch = '@';  
-        int grey = static_cast<int>(255.0 * (0.3 + 0.4 * intensity));  
-        int r = grey; int g = grey - 30; int b = grey + 50;  
-        r = std::clamp(r, 0, 255);
-        g = std::clamp(g, 0, 255);
-        b = std::clamp(b, 0, 255);
-
+        if (hue >= 0.8) {
+            // Galaxy swirl: soft celestial cyan / electric blue-white
+            r = std::clamp(grey - 20, 90, 240);
+            g = std::clamp(grey + 10, 110, 250);
+            b = std::clamp(grey + 55, 140, 255);
+        } else if (hue >= 0.4) {
+            // Star clusters and random stars: brilliant warm/bright white
+            r = std::clamp(grey + 20, 120, 255);
+            g = std::clamp(grey + 20, 120, 255);
+            b = std::clamp(grey + 10, 100, 255);
+        } else {
+            // Distinct faint single dots: soft silvery blue-grey
+            r = std::clamp(grey - 30, 70, 190);
+            g = std::clamp(grey - 20, 80, 200);
+            b = std::clamp(grey + 20, 100, 230);
+        }
+        
         char buf[48];
         if (color_mode == ColorMode::TRUECOLOR) {
             snprintf(buf, sizeof(buf), "\033[38;2;%d;%d;%dm%c", r, g, b, ch);
@@ -217,6 +232,12 @@ std::string TerminalRenderer::coloredChar(double intensity, double hue) const {
             snprintf(buf, sizeof(buf), "\033[38;5;%dm%c", idx, ch);
         }
         return std::string(buf);
+    }
+
+    char ch = intensityToChar(intensity);
+
+    if (color_mode == ColorMode::ASCII_ONLY) {
+        return std::string(1, ch);
     }
 
     if (intensity < 0.001) {
@@ -261,7 +282,7 @@ void TerminalRenderer::render() {
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             int idx = y * width + x;
-            output_buf += coloredChar(intensity_buf[idx], hue_buf[idx]);
+            output_buf += coloredChar(intensity_buf[idx], hue_buf[idx], hit_buf[idx]);
         }
         output_buf += "\r\n";
     }

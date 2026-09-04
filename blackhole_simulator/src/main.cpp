@@ -71,6 +71,9 @@ int main() {
                 case KEY_UP:     camera.rotateTheta(-0.03); break;
                 case KEY_DOWN:   camera.rotateTheta(0.03);  break;
 
+                case '[':        camera.rotateRoll(-0.05);  break;
+                case ']':        camera.rotateRoll(0.05);   break;
+
 
                 case '+': case '=': camera.zoom(0.9);  break;  
                 case '-': case '_': camera.zoom(1.1);  break;  
@@ -147,7 +150,7 @@ int main() {
                             result.intensity = 0.6; 
                         }
 
-                        renderer.setPixel(x, y, result.intensity, result.hue);
+                        renderer.setPixel(x, y, result.intensity, result.hue, result.hit);
                     }
                 }
             });

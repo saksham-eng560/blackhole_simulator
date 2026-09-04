@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "ray_tracer.h"
 
 enum class ColorMode {
     ASCII_ONLY,    
@@ -40,7 +41,7 @@ public:
     int getHeight() const { return height; }
 
 
-    void setPixel(int x, int y, double intensity, double hue = 0.0);
+    void setPixel(int x, int y, double intensity, double hue = 0.0, HitType hit = HitType::NONE);
 
 
     void clear();
@@ -67,6 +68,7 @@ private:
     int width, height;
     std::vector<double> intensity_buf;
     std::vector<double> hue_buf;
+    std::vector<HitType> hit_buf;
     std::string output_buf;
     std::string hud_line1, hud_line2;
     bool initialized = false;
@@ -75,7 +77,7 @@ private:
     char intensityToChar(double intensity) const;
 
 
-    std::string coloredChar(double intensity, double hue) const;
+    std::string coloredChar(double intensity, double hue, HitType hit) const;
 
 
     void heatmapRGB(double hue, double brightness,
