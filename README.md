@@ -13,7 +13,7 @@ rendered via general-relativistic null geodesic ray tracing.
 | Feature | Equation / Method |
 |---|---|
 | **Spacetime** | Schwarzschild metric: ds² = −(1−rₛ/r)dt² + (1−rₛ/r)⁻¹dr² + r²dΩ² |
-| **Ray tracing** | Null geodesic integration: **a⃗** = −(3/2)·rₛ·h²/r⁵·**r⃗** |
+| **Ray tracing** | Null geodesic integration: **a** = −(3/2)·rₛ·h²/r⁵·**r** |
 | **Integrator** | 4th-order Runge-Kutta with adaptive step sizing |
 | **Accretion disk** | Novikov-Thorne thin disk: T(r) ∝ r⁻³/⁴·[1−√(rᵢₙ/r)]¹/⁴ |
 | **Doppler beaming** | I_obs = g⁴·I_emit, g = g_grav·g_doppler |
